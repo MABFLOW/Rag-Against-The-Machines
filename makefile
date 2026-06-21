@@ -6,7 +6,7 @@ install:
 	uv sync
 
 run:
-	uv run python -m src
+	python3 -m src
 
 
 	
