@@ -1,6 +1,6 @@
-from .chuncker import Chuncker
+from .chunker_v2 import Chunker
 
 
 if __name__ == "__main__":
-    ch = Chuncker("src/test.py")
+    ch = Chunker()
     ch.run()
