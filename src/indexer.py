@@ -11,8 +11,8 @@ class Indexer:
 
         
 
-    def index(self, content):
-        corpus_tokens = bm25s.tokenize(content)
+    def index(self):
+        corpus_tokens = bm25s.tokenize(self.content)
         self.retriever = bm25s.BM25()
         self.retriever.index(corpus_tokens)
     

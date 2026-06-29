@@ -1,6 +1,6 @@
-from .chunker_v2 import Chunker
+from .engine import Engine
 
 
 if __name__ == "__main__":
-    ch = Chunker()
+    ch = Engine("data_chunked.json")
     ch.run()

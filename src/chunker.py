@@ -2,7 +2,6 @@ import ast
 from .parser import Parser
 import json
 from pathlib import Path
-import bm25s
 
 
 class Chunker:
