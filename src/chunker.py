@@ -19,10 +19,33 @@ class Chunker:
         return tree, lines
 
     def splitting_content(self, content):
-        return [
-            content[i:i + self.max_tokens]
-            for i in range(0, len(content), self.max_tokens)
-        ]
+        chunks = []
+        start = 0
+
+        while start < len(content):
+            end = min(start + self.max_tokens, len(content))
+
+            # Last chunk
+            if end == len(content):
+                chunks.append(content[start:end])
+                break
+
+            # Prefer blank line
+            split = content.rfind("\n\n", start, end)
+
+            # Otherwise normal line break
+            if split == -1:
+                split = content.rfind("\n", start, end)
+
+            # If no line break exists, hard split
+            if split == -1 or split <= start:
+                split = end
+
+            chunks.append(content[start:split])
+            start = split
+
+        return chunks
+        
 
 
     def run(self):
