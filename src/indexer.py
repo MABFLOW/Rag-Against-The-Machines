@@ -19,38 +19,33 @@ class Indexer:
     def load(self):
         self.retriever = bm25s.BM25.load("bm25_index", load_corpus=True)
     
-    def search(self, query):
+    def search(self, query, k):
         outputs = []
         
-        if isinstance(query, str):
-            queries = [query]
-        else:
-            queries = query
+        queries = [query] if isinstance(query, str) else query
+        tokens = bm25s.tokenize(queries)
+        results, scores = self.retriever.retrieve(tokens,k=k)
 
-        for q in queries:
-            tokens = bm25s.tokenize([q])
-            results, scores = self.retriever.retrieve(
-                tokens,
-                k=min(5, len(self.chunks))
+            
+        for q, docs, doc_scores in zip(queries, results[0], scores[0]):
+            query_result = [
+                {
+                "file_path": doc["file"],
+                "first_character_index": doc[
+                    "first_character"
+                ],
+                "last_character_index": doc[
+                    "last_character"
+                ],
+                "content": doc["content"],
+                "score": float(score),
+            }
+            for doc, score in zip(docs, doc_scores)
+            ]
 
-            )
-            query_result = []
-            for doc, score in zip(results[0], scores[0]):
-                query_result.append({
-                    "file_path": doc["file"],
-                    "first_character_index": doc[
-                        "first_character"
-                    ],
-                    "last_character_index": doc[
-                        "last_character"
-                    ],
-                    "content": doc["content"],
-                    "score": float(score),
-                })
-
-            outputs.append({
-                "query": q,
-                "results": query_result,
-            })
+        outputs.append({
+            "query": q,
+            "results": query_result,
+        })
 
         return outputs

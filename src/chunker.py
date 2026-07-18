@@ -4,13 +4,14 @@ import json
 from pathlib import Path
 from tqdm import tqdm
 
+
 class Chunker:
 
-    def __init__(self, output= "data_chunked.json", folder_to_chunk = "vllm-0.10.1", max_tokens = 2000):
+    def __init__(self, max_chunk_size = 2000):
         self.parser = Parser()
-        self.output = output
-        self.folder_to_chunk = folder_to_chunk
-        self.max_tokens = max_tokens
+        self.max_chunk_size = max_chunk_size
+        self.folder_to_chunk = "data/raw/vllm-0.10.1"
+        self.output = "data/processed"
     
     def parse_python_files(self, file):
         source = self.parser.read_from_file(file)
@@ -21,31 +22,44 @@ class Chunker:
     def splitting_content(self, content):
         chunks = []
         start = 0
-
         while start < len(content):
-            end = min(start + self.max_tokens, len(content))
+            end = min(start + self.max_chunk_size, len(content))
 
-            # Last chunk
             if end == len(content):
-                chunks.append(content[start:end])
+                chunks.append(
+                
+                    {
+                        "content": content[start:end],
+                        "start_char": start,
+                        "last_char": end
+                    }
+                
+            )
                 break
 
-            # Prefer blank line
             split = content.rfind("\n\n", start, end)
 
-            # Otherwise normal line break
             if split == -1:
                 split = content.rfind("\n", start, end)
 
-            # If no line break exists, hard split
             if split == -1 or split <= start:
                 split = end
 
-            chunks.append(content[start:split])
+            chunks.append(
+                
+                    {
+                        "content": content[start:split],
+                        "start_char": start,
+                        "last_char": split
+                    }
+            )
             start = split
+            
 
         return chunks
-        
+    
+
+
     def run(self):
         all_chunks = []
         chunk_id = 1
@@ -140,7 +154,7 @@ class Chunker:
         
         for section in sections:
             parts = self.splitting_content(section)
-
+            
             heading = "Introduction"
 
             first_line = section.splitlines()[0] if section.splitlines() else ""
@@ -156,9 +170,9 @@ class Chunker:
                     "name": heading,
                     "part_id": part_num,
                     "total_parts": len(parts),
-                    "content": part_content,
-                    "first_character": 0,
-                    "last_character": 1,
+                    "content": part_content['content'],
+                    "first_character": part_content['start_char'],
+                    "last_character": part_content['last_char'],
                 })
 
                 chunk_id += 1
@@ -180,9 +194,9 @@ class Chunker:
                 "name": file.stem,
                 "part_id": part_number,
                 "total_parts": len(parts),
-                "content": part_content,
-                "first_character": 0,
-                "last_character": 1,
+                "content": part_content['content'],
+                "first_character": part_content['start_char'],
+                "last_character": part_content['last_char'],
 
             })
 
@@ -193,13 +207,9 @@ class Chunker:
         
 
     def save_output(self, data):
-        with open(self.output, 'w') as f:
+        path = Path(self.output)
+        path.mkdir(parents=True, exist_ok=True)
+
+        with open(path / "chunks.json", 'w') as f:
+            
             json.dump(data, f, indent=2)
-
-
-
-
-
-       
-    
-    

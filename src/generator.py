@@ -39,19 +39,7 @@ class Generator:
     ) -> str:
         prompt = build_prompt(question, contexts)
 
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "Answer only from the supplied context. "
-                    "Do not hallucinate."
-                ),
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            },
-        ]
+       
 
         text = self.tokenizer.apply_chat_template(
             messages,
@@ -84,55 +72,4 @@ class Generator:
 
 
 
-    def generate_v2(
-    self,
-    question: str,
-    contexts: list[str],
-) -> str:
-        prompt = build_prompt(question, contexts)
-
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "جاوب غير بالاعتماد على المعلومات الموجودة فالسياق المعطى. "
-                    "ماتزيد حتى معلومة من عندك وماتخمنش. "
-                    "جاوب بالدارجة المغربية وبالحروف العربية، "
-                    "وبطريقة واضحة ومختصرة. "
-                    "إلا مالقيتيش الجواب فالسياق، قول: "
-                    "'مالقيتش هاد المعلومة فالسياق المعطى.'"
-                ),
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            },
-        ]
-
-        text = self.tokenizer.apply_chat_template(
-            messages,
-            tokenize=False,
-            add_generation_prompt=True,
-            enable_thinking=False,
-        )
-
-        inputs = self.tokenizer(
-            text,
-            return_tensors="pt",
-            truncation=True,
-        ).to(self.model.device)
-
-        with torch.inference_mode():
-            output = self.model.generate(
-                **inputs,
-                max_new_tokens=250,
-                do_sample=False,
-                pad_token_id=self.tokenizer.eos_token_id,
-            )
-
-        generated_tokens = output[0][inputs["input_ids"].shape[1]:]
-
-        return self.tokenizer.decode(
-            generated_tokens,
-            skip_special_tokens=True,
-        ).strip()
+   

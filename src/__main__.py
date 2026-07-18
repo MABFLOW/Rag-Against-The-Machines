@@ -1,8 +1,6 @@
 from .engine import Engine
-
+import fire
 
 if __name__ == "__main__":
-    ch = Engine("data_chunked.json")
-
-    ch.run()
+    fire.Fire(Engine)
     
