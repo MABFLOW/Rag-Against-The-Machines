@@ -1,75 +1,51 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer
-import torch
+from transformers import pipeline
+
+SYSTEM_PROMPT = (
+    "You are answering questions about a codebase. "
+    "Use only the provided context to answer. "
+    "Do not invent information. "
+    "If the context is insufficient to answer, say so explicitly."
+)
 
 def build_prompt(question: str, contexts: list[str]) -> str:
     joined_context = "\n\n---\n\n".join(contexts)
+    return f"""Context:
+{joined_context}
 
-    return f"""
-    You are answering a question about a codebase.
+Question:
+{question}
 
-    Use only the provided context.
-    Do not invent information.
-    If the context is insufficient, say that the answer cannot be determined.
-
-    Context:
-    {joined_context}
-
-    Question:
-    {question}
-
-    Answer:
-    """.strip()
+Answer:"""
 
 class Generator:
-    def __init__(self) -> None:
-        model_name = "Qwen/Qwen3-4B-Instruct-2507"
-
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype="auto",
-            device_map="auto",
+    def __init__(self, max_new_tokens: int = 150) -> None:
+        self.pipe = pipeline(
+            "text-generation",
+            model="Qwen/Qwen3-0.6B",
+            dtype="float32",
+            device=-1,
         )
+        self.max_new_tokens = max_new_tokens
 
-    def generate(
-        self,
-        question: str,
-        contexts: list[str],
-    ) -> str:
+    def generate(self, question: str, contexts: list[str]) -> str:
         prompt = build_prompt(question, contexts)
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
 
-       
-
-        text = self.tokenizer.apply_chat_template(
+        text = self.pipe.tokenizer.apply_chat_template(
             messages,
             tokenize=False,
             add_generation_prompt=True,
             enable_thinking=False,
         )
 
-        inputs = self.tokenizer(
+        output = self.pipe(
             text,
-            return_tensors="pt",
-            truncation=True,
-        ).to(self.model.device)
+            max_new_tokens=self.max_new_tokens,
+            do_sample=False,
+            return_full_text=False,
+        )
 
-        with torch.inference_mode():
-            output = self.model.generate(
-                **inputs,
-                max_new_tokens=250,
-                do_sample=False,
-                pad_token_id=self.tokenizer.eos_token_id,
-            )
-
-        generated_tokens = output[0][inputs["input_ids"].shape[1]:]
-
-        return self.tokenizer.decode(
-            generated_tokens,
-            skip_special_tokens=True,
-        ).strip()
-    
-
-
-
-   
+        return output[0]["generated_text"].strip()

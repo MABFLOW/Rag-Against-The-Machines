@@ -3,7 +3,7 @@ from .parser import Parser
 import json
 from pathlib import Path
 from tqdm import tqdm
-
+from .models import ChunkModel
 
 class Chunker:
 
@@ -120,17 +120,17 @@ class Chunker:
 
             parts = self.splitting_content(content)
             for part_num, part_content in enumerate(parts):
-                chunks.append({
-                    "id": i,
-                    "file": str(file),
-                    "type": chunk_type,
-                    "name": node.name,
-                    "part_id": part_num,
-                    "total_parts": len(parts),
-                    "content": part_content,
-                    "first_character": start_char,
-                    "last_character": end_char
-                })
+                chunks.append(ChunkModel(
+                id=i,
+                file_path=str(file),
+                type=chunk_type,
+                name=node.name,
+                part_id= part_num,
+                total_parts=len(parts),
+                content=part_content['content'],
+                first_character=start_char,
+                last_character=end_char
+                ))
 
                 i += 1
         
@@ -163,17 +163,18 @@ class Chunker:
                 heading = first_line.lstrip("#").strip()
 
             for part_num, part_content in enumerate(parts, start=1):
-                chunks.append({
-                    "id": chunk_id,
-                    "file": str(file),
-                    "type": "markdown_section",
-                    "name": heading,
-                    "part_id": part_num,
-                    "total_parts": len(parts),
-                    "content": part_content['content'],
-                    "first_character": part_content['start_char'],
-                    "last_character": part_content['last_char'],
-                })
+
+                chunks.append(ChunkModel(
+                    id=chunk_id,
+                    file_path=str(file),
+                    type="markdown_section",
+                    name=heading,
+                    part_id= part_num,
+                    total_parts=len(parts),
+                    content=part_content['content'],
+                    first_character=part_content['start_char'],
+                    last_character=part_content['last_char']
+                    ))
 
                 chunk_id += 1
 
@@ -187,18 +188,17 @@ class Chunker:
         chunks = []
 
         for part_number, part_content in enumerate(parts, start=1):
-            chunks.append({
-                "id": chunk_id,
-                "file": str(file),
-                "type": "text",
-                "name": file.stem,
-                "part_id": part_number,
-                "total_parts": len(parts),
-                "content": part_content['content'],
-                "first_character": part_content['start_char'],
-                "last_character": part_content['last_char'],
-
-            })
+            chunks.append(ChunkModel(
+                id=chunk_id,
+                file_path=str(file),
+                type="text",
+                name=file.stem,
+                part_id= part_number,
+                total_parts=len(parts),
+                content=part_content['content'],
+                first_character=part_content['start_char'],
+                last_character=part_content['last_char']
+            ))
 
             chunk_id += 1
 
@@ -211,5 +211,4 @@ class Chunker:
         path.mkdir(parents=True, exist_ok=True)
 
         with open(path / "chunks.json", 'w') as f:
-            
-            json.dump(data, f, indent=2)
+            json.dump([chunk.model_dump() for chunk in data], f, indent=2)

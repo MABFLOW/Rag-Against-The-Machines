@@ -1,6 +1,6 @@
 import bm25s
 import json
-
+from .models import StudentSearchResults, MinimalSearchResults, MinimalSource
 
 class Indexer:
     
@@ -8,16 +8,17 @@ class Indexer:
         with open(file, 'r') as f:
             self.chunks = json.load(f)
         self.content = [chunk['content'] for chunk in self.chunks]
+        self.path = "data/processed/bm25_index"
 
     
     def index(self):
         corpus_tokens = bm25s.tokenize(self.content)
         self.retriever = bm25s.BM25()
         self.retriever.index(corpus_tokens)
-        self.retriever.save("bm25_index", corpus=self.chunks)
+        self.retriever.save(self.path, corpus=self.chunks)
 
     def load(self):
-        self.retriever = bm25s.BM25.load("bm25_index", load_corpus=True)
+        self.retriever = bm25s.BM25.load(self.path, load_corpus=True)
     
     def search(self, query, k):
         outputs = []
@@ -26,26 +27,24 @@ class Indexer:
         tokens = bm25s.tokenize(queries)
         results, scores = self.retriever.retrieve(tokens,k=k)
 
+        i = 0
+        for q, docs, doc_scores in zip(queries, results, scores):
+            i += 1
+
+            source = [MinimalSource(
+                id=i,
+                file_path=doc['file_path'],
+                first_character_index=doc["first_character"],
+                last_character_index=doc['last_character']
+            )
+            for doc in docs]
+           
             
-        for q, docs, doc_scores in zip(queries, results[0], scores[0]):
-            query_result = [
-                {
-                "file_path": doc["file"],
-                "first_character_index": doc[
-                    "first_character"
-                ],
-                "last_character_index": doc[
-                    "last_character"
-                ],
-                "content": doc["content"],
-                "score": float(score),
-            }
-            for doc, score in zip(docs, doc_scores)
-            ]
+            outputs.append(MinimalSearchResults(
+                question_id=f"q{i}",
+                question=q,
+                retrieved_sources=source
+            ))
 
-        outputs.append({
-            "query": q,
-            "results": query_result,
-        })
+        return StudentSearchResults(search_results=outputs, k=k)
 
-        return outputs
