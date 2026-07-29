@@ -1,4 +1,4 @@
-from transformers import pipeline
+from transformers import pipeline, GenerationConfig
 
 SYSTEM_PROMPT = (
     "You are answering questions about a codebase. "
@@ -49,3 +49,4 @@ class Generator:
         )
 
         return output[0]["generated_text"].strip()
+

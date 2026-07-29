@@ -27,13 +27,11 @@ class Chunker:
 
             if end == len(content):
                 chunks.append(
-                
                     {
                         "content": content[start:end],
                         "start_char": start,
                         "last_char": end
                     }
-                
             )
                 break
 
@@ -55,7 +53,6 @@ class Chunker:
             )
             start = split
             
-
         return chunks
     
 
@@ -128,8 +125,8 @@ class Chunker:
                 part_id= part_num,
                 total_parts=len(parts),
                 content=part_content['content'],
-                first_character=start_char,
-                last_character=end_char
+                first_character=start_char + part_content["start_char"],
+                last_character=start_char + part_content["last_char"],
                 ))
 
                 i += 1
@@ -161,9 +158,15 @@ class Chunker:
 
             if first_line.startswith("#"):
                 heading = first_line.lstrip("#").strip()
-
+            file_name = Path(file).name
             for part_num, part_content in enumerate(parts, start=1):
+                indexed_content = f"""
+File: {file_name}
+Path: {file}
+Section: {heading}
 
+{part_content["content"]}
+"""
                 chunks.append(ChunkModel(
                     id=chunk_id,
                     file_path=str(file),
@@ -171,7 +174,7 @@ class Chunker:
                     name=heading,
                     part_id= part_num,
                     total_parts=len(parts),
-                    content=part_content['content'],
+                    content=indexed_content,
                     first_character=part_content['start_char'],
                     last_character=part_content['last_char']
                     ))

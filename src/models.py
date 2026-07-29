@@ -32,7 +32,7 @@ class AnsweredQuestion(UnansweredQuestion):
 
 class MinimalSearchResults(BaseModel):
     question_id: str
-    question: str
+    question_str: str
     retrieved_sources: List[MinimalSource]
 
 class MinimalAnswer(MinimalSearchResults):
@@ -41,7 +41,6 @@ class MinimalAnswer(MinimalSearchResults):
 class StudentSearchResults(BaseModel):
     search_results: List[MinimalSearchResults]
     k: int
-
 
 class StudentSearchResultsAndAnswer(BaseModel):
     search_results: List[MinimalAnswer]

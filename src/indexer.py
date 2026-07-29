@@ -1,13 +1,26 @@
 import bm25s
 import json
 from .models import StudentSearchResults, MinimalSearchResults, MinimalSource
+from pathlib import Path
+
 
 class Indexer:
     
     def __init__(self, file):
         with open(file, 'r') as f:
             self.chunks = json.load(f)
-        self.content = [chunk['content'] for chunk in self.chunks]
+        self.content = []
+
+        for chunk in self.chunks:
+            text = f"""
+            File: {Path(chunk["file_path"]).name}
+            Path: {chunk["file_path"]}
+            Type: {chunk["type"]}
+            Name: {chunk["name"]}
+
+            {chunk["content"]}
+            """
+            self.content.append(text)
         self.path = "data/processed/bm25_index"
 
     
@@ -42,7 +55,7 @@ class Indexer:
             
             outputs.append(MinimalSearchResults(
                 question_id=f"q{i}",
-                question=q,
+                question_str=q,
                 retrieved_sources=source
             ))
 

@@ -3,7 +3,7 @@ from .indexer import Indexer
 from .generator import Generator
 import json
 from .parser import Parser
-
+from .models import MinimalAnswer, MinimalSearchResults, MinimalSource, StudentSearchResultsAndAnswer
 
 class Engine:
 
@@ -69,19 +69,36 @@ class Engine:
             contexts.append(text[source.first_character_index:source.last_character_index])
 
         answer_text = self.generator.generate(query, contexts)
-
         return answer_text
+        # return MinimalAnswer(answer=answer_text)
 
 
     def answer_dataset(self, student_search_results_path, save_directory=None):
-
+        output = []
         with open(student_search_results_path, 'r') as f:
-            student_search_results = json.load(f)
+            results = json.load(f)
+        sources = []
+        for res in results['search_results']:
+            question_id = res['question_id']
+            question = res['question']
+            retrieved_sources = res['retrieved_sources'][0]
+            file_path = retrieved_sources['file_path']
+            first_char = retrieved_sources['first_character_index']
+            last_char = retrieved_sources['last_character_index']
 
+            sources.append(MinimalSource(file_path=file_path, first_character_index=first_char, last_character_index=last_char))
 
-        entries = student_search_results["rag_questions"]
-        queries = [entry["question"] for entry in entries]
-        print(queries)
+            output.append(MinimalSearchResults(
+                question_id=question_id, 
+                question=question, 
+                retrieved_sources=sources
+            ))
+        print(output[0].question)
+        print(self.answer(output[0].question, 5))
+
+        # StudentSearchResults() 
+
+        
         
 
 
