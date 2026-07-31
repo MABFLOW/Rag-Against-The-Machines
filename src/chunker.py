@@ -51,7 +51,14 @@ class Chunker:
                         "last_char": split
                     }
             )
-            start = split
+            
+            next_start = split - 200
+
+            if next_start <= start:
+                next_start = split
+
+            start = next_start
+
             
         return chunks
     
@@ -75,11 +82,9 @@ class Chunker:
             if any(part in skip_folders for part in file.parts):
                 continue
 
-            if file.suffix == ".md":
-                chunks, chunk_id = self.process_readme(file, chunk_id)
-
-            elif file.suffix == ".txt":
+            if file.suffix in {".md", ".txt"}:
                 chunks, chunk_id = self.process_txt(file, chunk_id)
+
 
             elif file.suffix == ".py":
                 chunks, chunk_id = self.process_python(file, chunk_id)
@@ -110,10 +115,6 @@ class Chunker:
             content = "".join(lines[start:end])
 
             start_char = sum(len(line) for line in lines[: node.lineno - 1]) + node.col_offset
-            end_char = (
-                sum(len(line) for line in lines[: node.end_lineno - 1])
-                + node.end_col_offset
-            )
 
             parts = self.splitting_content(content)
             for part_num, part_content in enumerate(parts):
@@ -133,56 +134,6 @@ class Chunker:
         
         return chunks, i
     
-    def process_readme(self, file, chunk_id):
-        content = self.parser.read_from_file(file)
-        lines = content.splitlines(keepends=True)
-
-        current = []
-        sections = []
-        chunks = []
-        for line in lines:
-            if line.startswith("#") and current:
-                sections.append("".join(current))
-                current = []            
-            current.append(line)
-        
-        if current:
-            sections.append("".join(current))
-        
-        for section in sections:
-            parts = self.splitting_content(section)
-            
-            heading = "Introduction"
-
-            first_line = section.splitlines()[0] if section.splitlines() else ""
-
-            if first_line.startswith("#"):
-                heading = first_line.lstrip("#").strip()
-            file_name = Path(file).name
-            for part_num, part_content in enumerate(parts, start=1):
-                indexed_content = f"""
-File: {file_name}
-Path: {file}
-Section: {heading}
-
-{part_content["content"]}
-"""
-                chunks.append(ChunkModel(
-                    id=chunk_id,
-                    file_path=str(file),
-                    type="markdown_section",
-                    name=heading,
-                    part_id= part_num,
-                    total_parts=len(parts),
-                    content=indexed_content,
-                    first_character=part_content['start_char'],
-                    last_character=part_content['last_char']
-                    ))
-
-                chunk_id += 1
-
-        return chunks, chunk_id
-        
 
     def process_txt(self, file, chunk_id):
         content = self.parser.read_from_file(file)

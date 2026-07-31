@@ -1,4 +1,7 @@
-from transformers import pipeline, GenerationConfig
+from transformers import pipeline, logging as hf_logging
+import torch 
+
+hf_logging.set_verbosity_error()
 
 SYSTEM_PROMPT = (
     "You are answering questions about a codebase. "
@@ -18,14 +21,14 @@ Question:
 Answer:"""
 
 class Generator:
-    def __init__(self, max_new_tokens: int = 150) -> None:
+    def __init__(self) -> None:
         self.pipe = pipeline(
             "text-generation",
             model="Qwen/Qwen3-0.6B",
             dtype="float32",
             device=-1,
-        )
-        self.max_new_tokens = max_new_tokens
+        )        
+
 
     def generate(self, question: str, contexts: list[str]) -> str:
         prompt = build_prompt(question, contexts)
@@ -43,8 +46,6 @@ class Generator:
 
         output = self.pipe(
             text,
-            max_new_tokens=self.max_new_tokens,
-            do_sample=False,
             return_full_text=False,
         )
 

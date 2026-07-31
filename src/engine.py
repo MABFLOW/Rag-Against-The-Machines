@@ -3,7 +3,9 @@ from .indexer import Indexer
 from .generator import Generator
 import json
 from .parser import Parser
-from .models import MinimalAnswer, MinimalSearchResults, MinimalSource, StudentSearchResultsAndAnswer
+from .models import *
+from pathlib import Path
+from tqdm import tqdm
 
 class Engine:
 
@@ -73,36 +75,113 @@ class Engine:
         # return MinimalAnswer(answer=answer_text)
 
 
-    def answer_dataset(self, student_search_results_path, save_directory=None):
+    def answer_dataset(self, student_search_results_path, save_directory):
         output = []
         with open(student_search_results_path, 'r') as f:
             results = json.load(f)
-        sources = []
+
         for res in results['search_results']:
             question_id = res['question_id']
-            question = res['question']
-            retrieved_sources = res['retrieved_sources'][0]
-            file_path = retrieved_sources['file_path']
-            first_char = retrieved_sources['first_character_index']
-            last_char = retrieved_sources['last_character_index']
+            question = res['question_str']
+            retrieved_sources = res['retrieved_sources']
+            sources = []
 
-            sources.append(MinimalSource(file_path=file_path, first_character_index=first_char, last_character_index=last_char))
+            for src in retrieved_sources:
+
+                file_path = src['file_path']
+                first_char = src['first_character_index']
+                last_char = src['last_character_index']
+                sources.append(MinimalSource(file_path=file_path, first_character_index=first_char, last_character_index=last_char))
 
             output.append(MinimalSearchResults(
                 question_id=question_id, 
-                question=question, 
+                question_str=question, 
                 retrieved_sources=sources
             ))
-        print(output[0].question)
-        print(self.answer(output[0].question, 5))
-
-        # StudentSearchResults() 
-
+        answers = []
+        for item in tqdm(output, desc="Answering dataset"):
+            contexts = []
         
+            for source in item.retrieved_sources:
+                with open(source.file_path, 'r') as f:
+                    text = f.read()
+                contexts.append(text[source.first_character_index:source.last_character_index])
+
+            answer = self.generator.generate(item.question_str, contexts)
+            answers.append(MinimalAnswer(
+                question_id=item.question_id,
+                question_str=item.question_str,
+                retrieved_sources=item.retrieved_sources,
+                answer=answer
+            ))
+
+
+        final_output = StudentSearchResultsAndAnswer(search_results=answers, k=results['k'])
+
+        out_dir = Path(save_directory)
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(out_dir / "StudentSearchResultsAndAnswer.json", 'w') as f:
+             json.dump(final_output.model_dump(), f, indent=2)
+
+            
         
-
-
 
     def evaluate(self, student_search_results_path, dataset_path):
-        pass
+        with open(student_search_results_path, 'r') as f:
+            results = json.load(f)
+        with open(dataset_path, 'r') as f:
+            dataset = json.load(f)
+
+        ground_truth = {}
+        for item in dataset['rag_questions']:
+            rag_sources = []
+            for src in item['sources']:
+                rag_sources.append(
+                    MinimalSource(
+                        file_path=src['file_path'],
+                        first_character_index=src['first_character_index'],
+                        last_character_index=src['last_character_index']
+                    )
+                )
+            ground_truth[item['question_id']] = AnsweredQuestion(
+                question_id=item['question_id'],
+                question=item['question'],
+                sources=rag_sources,
+                answer=item['answer']
+            )
+
+        recalls = []
+        for res in results['search_results']:
+            q_id = res['question_id']
+            if q_id not in ground_truth:
+                continue
+
+            truth_srcs = ground_truth[q_id].sources
+            retrieved_sources = res['retrieved_sources']
+
+            if not truth_srcs:
+                continue
+
+            found = 0
+            for truth in truth_srcs:
+                if any(self._sources_overlap(r, truth) for r in retrieved_sources):
+                    found += 1
+
+            recalls.append(found / len(truth_srcs))
+
+        overall_recall = sum(recalls) / len(recalls) if recalls else 0.0
+        print(f"Recall@k over {len(recalls)} questions: {overall_recall:.4f}")
+        return overall_recall
+
+    def _sources_overlap(self, retrieved, truth):
+        if retrieved['file_path'] != truth.file_path:
+            return False
+        return (
+            retrieved['first_character_index'] < truth.last_character_index
+            and truth.first_character_index < retrieved['last_character_index']
+        )
+
+        
+
 
