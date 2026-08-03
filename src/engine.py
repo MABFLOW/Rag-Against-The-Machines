@@ -11,13 +11,16 @@ class Engine:
 
     def __init__(self, file="data/processed/chunks.json"):
         self.file = file
-        self.generator = Generator()
         self.parser = Parser()
         self.indexer = Indexer(self.file)
 
 
     
     def index(self, max_chunk_size=2000):
+        if isinstance(max_chunk_size, bool):
+            raise ValueError("test")
+        if not isinstance(max_chunk_size, int):
+            raise ValueError("should be int")
         chunker = Chunker(max_chunk_size=max_chunk_size)
         chunker.run()
 
@@ -55,6 +58,8 @@ class Engine:
 
     
     def answer(self, query, k):
+        self.generator = Generator()
+
         self.indexer.load()
 
         search_results = self.indexer.search(query, k)
@@ -76,6 +81,8 @@ class Engine:
 
 
     def answer_dataset(self, student_search_results_path, save_directory):
+        self.generator = Generator()
+
         output = []
         with open(student_search_results_path, 'r') as f:
             results = json.load(f)
