@@ -6,6 +6,9 @@ from .parser import Parser
 from .models import *
 from pathlib import Path
 from tqdm import tqdm
+from .exceptions import *
+from pathlib import Path
+
 
 class Engine:
 
@@ -17,10 +20,9 @@ class Engine:
 
     
     def index(self, max_chunk_size=2000):
-        if isinstance(max_chunk_size, bool):
-            raise ValueError("test")
-        if not isinstance(max_chunk_size, int):
-            raise ValueError("should be int")
+        
+        self.parser.validate_number(max_chunk_size, "max_chunk_size")
+
         chunker = Chunker(max_chunk_size=max_chunk_size)
         chunker.run()
 
@@ -28,33 +30,37 @@ class Engine:
 
     
     def search(self, query, k):
+        self.parser.validate_number(k, "k")
+        
         self.indexer.load()
 
         search_results = self.indexer.search(query, k)
-        
-        return search_results
+
+        for source in search_results.search_results[0].retrieved_sources:
+            print(f"{source.file_path} [{source.first_character_index}:{source.last_character_index}]")
+    
+
+    
     def search_dataset(self, dataset_path, k, save_directory):
+        self.parser.validate_file(dataset_path, "dataset_path")
+        save_dir = self.parser.validate_dir(save_directory, "save_directory")
+        self.parser.validate_number(k, "k")
+
         self.indexer = Indexer(self.file)
         self.indexer.load()
 
-        with open(dataset_path, 'r') as f:
-            dataset = json.load(f)
+        dataset = self.parser.load_data(dataset_path)
+        data_unaswered = self.parser.load_unanswered_question(dataset)
+        
+        rag_dataset = RagDataset(rag_questions=data_unaswered)
 
-        entries = dataset["rag_questions"]
-        queries = [entry["question"] for entry in entries]
+        queries = [item.question for item in rag_dataset.rag_questions]
+        ids = [item.question_id for item in rag_dataset.rag_questions]
 
-        search_results = self.indexer.search(queries, k)
+        search_results = self.indexer.search(queries, k, ids)
 
-        # Overwrite the auto-generated question_ids with the dataset's real ones,
-        # matching by position (search_results preserves query order).
-        for result, entry in zip(search_results.search_results, entries):
-            result.question_id = entry["question_id"]
-        from pathlib import Path
-        out_dir = Path(save_directory)
-        out_dir.mkdir(parents=True, exist_ok=True)
-
-        with open(out_dir / "StudentSearchResults.json", 'w') as f:
-            json.dump(search_results.model_dump(), f, indent=2)
+        self.parser.dump_to_dir(save_dir / "StudentSearchResults.json", search_results)
+        
 
     
     def answer(self, query, k):

@@ -33,7 +33,7 @@ class Indexer:
     def load(self):
         self.retriever = bm25s.BM25.load(self.path, load_corpus=True)
     
-    def search(self, query, k):
+    def search(self, query, k, ids=None):
         outputs = []
         
         queries = [query] if isinstance(query, str) else query
@@ -41,7 +41,7 @@ class Indexer:
         results, scores = self.retriever.retrieve(tokens,k=k)
 
         i = 0
-        for q, docs, doc_scores in zip(queries, results, scores):
+        for q, docs, id in zip(queries, results, ids):
             i += 1
 
             source = [MinimalSource(
@@ -54,7 +54,7 @@ class Indexer:
            
             
             outputs.append(MinimalSearchResults(
-                question_id=f"q{i}",
+                question_id=id,
                 question_str=q,
                 retrieved_sources=source
             ))

@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator, field_validator
 from typing import List
 import uuid
+from .exceptions import *
+
 
 class ChunkModel(BaseModel):
     id: int
@@ -13,10 +15,13 @@ class ChunkModel(BaseModel):
     first_character: int
     last_character: int
 
+
+
 class MinimalSource(BaseModel):
     file_path: str
     first_character_index: int
     last_character_index: int
+
 
 
 
@@ -45,3 +50,6 @@ class StudentSearchResults(BaseModel):
 class StudentSearchResultsAndAnswer(BaseModel):
     search_results: List[MinimalAnswer]
     k: int
+
+class RagDataset(BaseModel):
+    rag_questions: List[AnsweredQuestion | UnansweredQuestion]
