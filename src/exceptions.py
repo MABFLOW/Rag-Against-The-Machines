@@ -1,6 +1,6 @@
 
 
-class Parsing(Exception):
+class ParsingError(Exception):
     def __init__(self, message=""):
         super().__init__(f"Parsing Error: {message}")
 

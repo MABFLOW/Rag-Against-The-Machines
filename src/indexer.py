@@ -41,6 +41,8 @@ class Indexer:
         results, scores = self.retriever.retrieve(tokens,k=k)
 
         i = 0
+        if ids is None:
+            ids = [f"q{i}" for i in range(1, len(queries) + 1)]
         for q, docs, id in zip(queries, results, ids):
             i += 1
 

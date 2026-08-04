@@ -1,13 +1,10 @@
 from .chunker import Chunker
 from .indexer import Indexer
 from .generator import Generator
-import json
 from .parser import Parser
 from .models import *
-from pathlib import Path
 from tqdm import tqdm
 from .exceptions import *
-from pathlib import Path
 
 
 class Engine:
@@ -50,6 +47,7 @@ class Engine:
         self.indexer.load()
 
         dataset = self.parser.load_data(dataset_path)
+        
         data_unaswered = self.parser.load_unanswered_question(dataset)
         
         rag_dataset = RagDataset(rag_questions=data_unaswered)
@@ -64,34 +62,45 @@ class Engine:
 
     
     def answer(self, query, k):
+        self.parser.validate_argument(query, 'query')
+        self.parser.validate_number(k, 'k')
         self.generator = Generator()
-
         self.indexer.load()
 
         search_results = self.indexer.search(query, k)
 
-        # search_results.search_results[0] is this single query's MinimalSearchResults
         sources = search_results.search_results[0].retrieved_sources
-
-        # MinimalSource only has file_path + offsets, no content —
-        # so read the actual text back from disk using those offsets
+        q_id = search_results.search_results[0].question_id
+        
+        
         contexts = []
         for source in sources:
-            with open(source.file_path, 'r') as f:
-                text = f.read()
-            contexts.append(text[source.first_character_index:source.last_character_index])
-
+            content = self.parser.read_from_file(source.file_path)
+            f = source.first_character_index
+            l = source.last_character_index
+            contexts.append(
+                content[f:l]
+            )
+        
         answer_text = self.generator.generate(query, contexts)
-        return answer_text
-        # return MinimalAnswer(answer=answer_text)
+        minimal_answer = MinimalAnswer(question_id=q_id, question_str=query, retrieved_sources=sources, answer=answer_text)
+
+        return minimal_answer.answer
 
 
     def answer_dataset(self, student_search_results_path, save_directory):
         self.generator = Generator()
+        self.parser.validate_file(student_search_results_path, "student_search_results_path")
+        save_dir = self.parser.validate_dir(save_directory, "save_directory")
 
         output = []
-        with open(student_search_results_path, 'r') as f:
-            results = json.load(f)
+
+        results = self.parser.load_data(student_search_results_path)
+
+        try:
+            StudentSearchResults(search_results=results["search_results"], k=results['k'])
+        except Exception:
+            raise ParsingError("Data in 'student_search_results_path' must be validated as the following:\nSearch_results: List[MinimalSearchResults]\nK: int")
 
         for res in results['search_results']:
             question_id = res['question_id']
@@ -116,9 +125,11 @@ class Engine:
             contexts = []
         
             for source in item.retrieved_sources:
-                with open(source.file_path, 'r') as f:
-                    text = f.read()
-                contexts.append(text[source.first_character_index:source.last_character_index])
+                content = self.parser.read_from_file(source.file_path)
+                f = source.first_character_index
+                l = source.last_character_index
+                
+                contexts.append(content[f:l])
 
             answer = self.generator.generate(item.question_str, contexts)
             answers.append(MinimalAnswer(
@@ -128,24 +139,18 @@ class Engine:
                 answer=answer
             ))
 
-
         final_output = StudentSearchResultsAndAnswer(search_results=answers, k=results['k'])
 
-        out_dir = Path(save_directory)
-        out_dir.mkdir(parents=True, exist_ok=True)
+        self.parser.dump_to_dir(save_dir / "StudentSearchResultsAndAnswer.json" , final_output)
 
-        with open(out_dir / "StudentSearchResultsAndAnswer.json", 'w') as f:
-             json.dump(final_output.model_dump(), f, indent=2)
-
-            
-        
 
     def evaluate(self, student_search_results_path, dataset_path):
-        with open(student_search_results_path, 'r') as f:
-            results = json.load(f)
-        with open(dataset_path, 'r') as f:
-            dataset = json.load(f)
+        self.parser.validate_file(student_search_results_path)
+        self.parser.validate_file(dataset_path)
 
+        results = self.parser.load_data(student_search_results_path)
+        dataset = self.parser.load_data(dataset_path)
+        
         ground_truth = {}
         for item in dataset['rag_questions']:
             rag_sources = []
