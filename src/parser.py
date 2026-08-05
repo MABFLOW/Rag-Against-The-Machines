@@ -1,7 +1,6 @@
-from .exceptions import *
+from .exceptions import CLIError, ParsingError, FileAccessError
 from pathlib import Path
 import json
-from .models import *
 
 
 class Parser:
@@ -29,7 +28,6 @@ class Parser:
     def validate_argument(self, var, name):
         if not isinstance(var, str):
             raise CLIError(f"{name} must be a valid str.")
-       
 
     def validate_file(self, path, name):
         file = Path(str(path))
@@ -38,10 +36,6 @@ class Parser:
         content = self.read_from_file(file)
         if not content:
             raise ParsingError(f"'{name}' is empty.")
-
-
-
-        
 
     def validate_dir(self, path, name):
         try:
@@ -53,48 +47,17 @@ class Parser:
         if not dir.is_dir():
             raise CLIError(f"'{name}' Path must be valid.")
 
-        
-
-            
     def load_data(self, path):
         try:
             with open(path, 'r') as f:
                 data = json.load(f)
             return data
         except PermissionError:
-            raise FileAccessError(f"Permission denied while accessing '{path}'.")
+            raise FileAccessError(
+                f"Permission denied while accessing '{path}'.")
         except json.JSONDecodeError:
             raise ParsingError(f"Data in '{path}' must be valid JSON.")
-        
-
-    def load_unanswered_question(self, dataset):
-        data = []
-        try:
-            rag_questions = dataset.get('rag_questions')
-
-            for item in rag_questions:
-                data.append(UnansweredQuestion(
-                    question_id=item.get("question_id"), 
-                    question=item.get("question")
-            ))
-        except Exception:
-            raise ParsingError(
-            "Dataset should follow this JSON schema:\n"
-            "{\n"
-            '  "rag_questions": [\n'
-            "    {\n"
-            '      "question_id": "<string>",\n'
-            '      "question": "<string>"\n'
-            "    }\n"
-            "  ]\n"
-            "}"
-        )
-
-        return data
-
 
     def dump_to_dir(self, path, data):
         with open(path, 'w') as f:
             json.dump(data.model_dump(), f, indent=2)
-
-    

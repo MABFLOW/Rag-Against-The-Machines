@@ -1,6 +1,5 @@
 
 
-
 install:
 	uv sync
 

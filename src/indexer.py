@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 class Indexer:
-    
+
     def __init__(self, file):
         with open(file, 'r') as f:
             self.chunks = json.load(f)
@@ -23,7 +23,6 @@ class Indexer:
             self.content.append(text)
         self.path = "data/processed/bm25_index"
 
-    
     def index(self):
         corpus_tokens = bm25s.tokenize(self.content)
         self.retriever = bm25s.BM25()
@@ -32,13 +31,13 @@ class Indexer:
 
     def load(self):
         self.retriever = bm25s.BM25.load(self.path, load_corpus=True)
-    
+
     def search(self, query, k, ids=None):
         outputs = []
-        
+
         queries = [query] if isinstance(query, str) else query
         tokens = bm25s.tokenize(queries)
-        results, scores = self.retriever.retrieve(tokens,k=k)
+        results, scores = self.retriever.retrieve(tokens, k=k)
 
         i = 0
         if ids is None:
@@ -52,9 +51,9 @@ class Indexer:
                 first_character_index=doc["first_character"],
                 last_character_index=doc['last_character']
             )
-            for doc in docs]
-           
-            
+                for doc in docs
+            ]
+
             outputs.append(MinimalSearchResults(
                 question_id=id,
                 question_str=q,
@@ -62,4 +61,3 @@ class Indexer:
             ))
 
         return StudentSearchResults(search_results=outputs, k=k)
-

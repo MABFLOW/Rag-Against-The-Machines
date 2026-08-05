@@ -7,4 +7,3 @@ if __name__ == "__main__":
         fire.Fire(Engine)
     except Exception as e:
         print(e)
-    

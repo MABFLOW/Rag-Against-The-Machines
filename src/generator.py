@@ -1,5 +1,5 @@
 from transformers import pipeline, logging as hf_logging
-import torch 
+
 
 hf_logging.set_verbosity_error()
 
@@ -9,6 +9,7 @@ SYSTEM_PROMPT = (
     "Do not invent information. "
     "If the context is insufficient to answer, say so explicitly."
 )
+
 
 def build_prompt(question: str, contexts: list[str]) -> str:
     joined_context = "\n\n---\n\n".join(contexts)
@@ -20,6 +21,7 @@ Question:
 
 Answer:"""
 
+
 class Generator:
     def __init__(self) -> None:
         self.pipe = pipeline(
@@ -27,8 +29,7 @@ class Generator:
             model="Qwen/Qwen3-0.6B",
             dtype="float32",
             device=-1,
-        )        
-
+        )
 
     def generate(self, question: str, contexts: list[str]) -> str:
         prompt = build_prompt(question, contexts)
@@ -50,4 +51,3 @@ class Generator:
         )
 
         return output[0]["generated_text"].strip()
-
