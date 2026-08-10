@@ -1,16 +1,20 @@
 import bm25s
-import json
 from .models import StudentSearchResults, MinimalSearchResults, MinimalSource
 from pathlib import Path
+from .parser import Parser
 
 
 class Indexer:
 
     def __init__(self, file):
-        with open(file, 'r') as f:
-            self.chunks = json.load(f)
+        self.parser = Parser()
+        self.file = file
+        self.chunks = ""
         self.content = []
+        self.path = "data/processed/bm25_index"
 
+    def _load_info(self):
+        self.chunks = self.parser.load_data(self.file)
         for chunk in self.chunks:
             text = f"""
             File: {Path(chunk["file_path"]).name}
@@ -21,13 +25,13 @@ class Indexer:
             {chunk["content"]}
             """
             self.content.append(text)
-        self.path = "data/processed/bm25_index"
 
     def index(self):
-        corpus_tokens = bm25s.tokenize(self.content)
+        self._load_info()
+        corpus_tokens = bm25s.tokenize(self.content, show_progress=True)
         self.retriever = bm25s.BM25()
         self.retriever.index(corpus_tokens)
-        self.retriever.save(self.path, corpus=self.chunks)
+        self.retriever.save(self.path, corpus=self.chunks)  
 
     def load(self):
         self.retriever = bm25s.BM25.load(self.path, load_corpus=True)

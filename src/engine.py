@@ -19,6 +19,8 @@ class Engine:
         self.parser.validate_number(max_chunk_size, "max_chunk_size")
         chunker = Chunker(max_chunk_size=max_chunk_size)
         chunker.run()
+        self.parser.validate_file(self.file, "chunking file")
+
         self.indexer.index()
 
     def search(self, query, k):

@@ -59,5 +59,7 @@ class Parser:
             raise ParsingError(f"Data in '{path}' must be valid JSON.")
 
     def dump_to_dir(self, path, data):
+        # path = Path(path)
+        # path.mkdir(parents=True, exist_ok=True)
         with open(path, 'w') as f:
             json.dump(data.model_dump(), f, indent=2)

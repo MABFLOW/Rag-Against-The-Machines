@@ -88,13 +88,13 @@ class Chunker:
 
             elif file.suffix == ".py":
                 chunks, chunk_id = self.process_python(file, chunk_id)
-
             else:
                 continue
 
             all_chunks.extend(chunks)
-
         self.save_output(all_chunks)
+        print("Ingestion complete!", end=" ")
+        print(f"Indexed {len(all_chunks)} chunks under {self.output}")
 
     def process_python(self, file, i):
         tree, lines = self.parse_python_files(file)
