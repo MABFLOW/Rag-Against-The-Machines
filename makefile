@@ -1,14 +1,14 @@
 
 
 install:
-	pip install uv
-	uv sync
+	@pip install uv
+	@uv sync
 
 run:
-	uv run python3 -m src
+	@uv run python3 -m src
 
 debug:
-	uv run python -m pdb src
+	@uv run python -m pdb src
 
 clean:
 	@find . -type d -name "__pycache__" -exec rm -rf {} +

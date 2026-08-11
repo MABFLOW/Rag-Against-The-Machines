@@ -78,4 +78,7 @@ class Generator:
             return_full_text=False,
         )
 
-        return output[0]["generated_text"].strip()
+        generated_text = output[0]["generated_text"]
+        if not isinstance(generated_text, str):
+            raise RuntimeError("Expected pipeline to return a string.")
+        return generated_text.strip()
