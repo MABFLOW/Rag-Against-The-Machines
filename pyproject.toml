@@ -14,3 +14,12 @@ dependencies = [
     "tqdm>=4.68.4",
     "transformers>=5.13.1",
 ]
+
+[dependency-groups]
+dev = [
+    "types-tqdm>=4.70.0.20260805",
+]
+
+[[tool.mypy.overrides]]
+module = ["bm25s", "fire"]
+ignore_missing_imports = true

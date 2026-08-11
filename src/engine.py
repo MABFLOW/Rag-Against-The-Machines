@@ -2,20 +2,37 @@ from .chunker import Chunker
 from .indexer import Indexer
 from .generator import Generator
 from .parser import Parser
-from .models import MinimalAnswer, StudentSearchResultsAndAnswer
+from .models import (
+    AnsweredQuestion,
+    MinimalAnswer,
+    MinimalSource,
+    StudentSearchResultsAndAnswer,
+)
 from tqdm import tqdm
 from .validation import Validation
 
 
 class Engine:
+    """Coordinates chunking, indexing, search, and answer generation."""
 
-    def __init__(self, file="data/processed/chunks.json"):
+    def __init__(self, file: str = "data/processed/chunks.json") -> None:
+        """Initializes the Engine.
+
+        Args:
+            file: Path to the JSON file of chunks used to build and query
+                the search index.
+        """
         self.file = file
         self.parser = Parser()
         self.validator = Validation()
         self.indexer = Indexer(self.file)
 
-    def index(self, max_chunk_size=2000):
+    def index(self, max_chunk_size: int = 2000) -> None:
+        """Chunks the configured source folder and builds a search index.
+
+        Args:
+            max_chunk_size: Maximum number of characters allowed per chunk.
+        """
         self.parser.validate_number(max_chunk_size, "max_chunk_size")
         chunker = Chunker(max_chunk_size=max_chunk_size)
         chunker.run()
@@ -23,7 +40,13 @@ class Engine:
 
         self.indexer.index()
 
-    def search(self, query, k):
+    def search(self, query: str, k: int) -> None:
+        """Searches the index for a query and prints the matched sources.
+
+        Args:
+            query: The search query text.
+            k: Number of top results to retrieve.
+        """
         self.parser.validate_number(k, "k")
         self.indexer.load()
         search_results = self.indexer.search(query, k)
@@ -34,7 +57,16 @@ class Engine:
 
             print(f"{path} [{first_char}:{last_char}]")
 
-    def search_dataset(self, dataset_path, k, save_directory):
+    def search_dataset(
+        self, dataset_path: str, k: int, save_directory: str
+    ) -> None:
+        """Runs search over every question in a dataset and saves results.
+
+        Args:
+            dataset_path: Path to a JSON file containing a ``RagDataset``.
+            k: Number of top results to retrieve per question.
+            save_directory: Directory to write the search results to.
+        """
         self.parser.validate_file(dataset_path, "dataset_path")
         save_dir = self.parser.validate_dir(save_directory, "save_directory")
         self.parser.validate_number(k, "k")
@@ -54,7 +86,16 @@ class Engine:
         self.parser.dump_to_dir(
             save_dir / "StudentSearchResult s.json", search_results)
 
-    def answer(self, query, k):
+    def answer(self, query: str, k: int) -> str:
+        """Searches the index and generates an answer to a query.
+
+        Args:
+            query: The question to answer.
+            k: Number of top results to retrieve as context.
+
+        Returns:
+            The generated answer text.
+        """
         self.parser.validate_argument(query, 'query')
         self.parser.validate_number(k, 'k')
         self.generator = Generator()
@@ -84,7 +125,16 @@ class Engine:
 
         return minimal_answer.answer
 
-    def answer_dataset(self, student_search_results_path, save_directory):
+    def answer_dataset(
+        self, student_search_results_path: str, save_directory: str
+    ) -> None:
+        """Generates answers for a dataset of prior search results.
+
+        Args:
+            student_search_results_path: Path to a JSON file containing a
+                ``StudentSearchResults`` instance.
+            save_directory: Directory to write the generated answers to.
+        """
         self.generator = Generator()
         self.parser.validate_file(
             student_search_results_path,
@@ -124,7 +174,20 @@ class Engine:
         self.parser.dump_to_dir(
             save_dir / "StudentSearchResultsAndAnswer.json", final_output)
 
-    def evaluate(self, student_search_results_path, dataset_path):
+    def evaluate(
+        self, student_search_results_path: str, dataset_path: str
+    ) -> float:
+        """Computes recall@k of retrieved sources against ground truth.
+
+        Args:
+            student_search_results_path: Path to a JSON file containing a
+                ``StudentSearchResults`` instance.
+            dataset_path: Path to a JSON file containing a ``RagDataset``
+                with ground-truth sources.
+
+        Returns:
+            The overall recall@k across all evaluated questions.
+        """
         self.parser.validate_file(
             student_search_results_path, "student_search_results_path")
         self.parser.validate_file(dataset_path, "dataset_path")
@@ -144,7 +207,11 @@ class Engine:
         recalls = []
         for res in results.search_results:
             truth = ground_truth.get(res.question_id)
-            if truth is None or not truth.sources:
+            if (
+                truth is None
+                or not isinstance(truth, AnsweredQuestion)
+                or not truth.sources
+            ):
                 continue
 
             found = sum(
@@ -158,7 +225,19 @@ class Engine:
         print(f"Recall@k over {len(recalls)} questions: {overall_recall:.4f}")
         return overall_recall
 
-    def _sources_overlap(self, retrieved, truth):
+    def _sources_overlap(
+        self, retrieved: MinimalSource, truth: MinimalSource
+    ) -> bool:
+        """Checks whether two source spans overlap in the same file.
+
+        Args:
+            retrieved: A retrieved source span.
+            truth: A ground-truth source span.
+
+        Returns:
+            True if both spans reference the same file and their character
+            ranges overlap, False otherwise.
+        """
         if retrieved.file_path != truth.file_path:
             return False
         return (

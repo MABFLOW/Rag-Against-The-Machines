@@ -1,3 +1,5 @@
+"""Command-line entry point exposing :class:`Engine` via Fire."""
+
 from .engine import Engine
 import fire
 

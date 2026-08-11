@@ -4,24 +4,57 @@ import json
 from pathlib import Path
 from tqdm import tqdm
 from .models import ChunkModel
+from typing import Any
 
 
 class Chunker:
+    """Splits raw source and text files into chunks for indexing.
 
-    def __init__(self, max_chunk_size=2000):
+    Walks a folder of raw files, splits each file's content into
+    size-bounded chunks, and writes the resulting chunks to a JSON file.
+    """
+
+    def __init__(self, max_chunk_size: int = 2000) -> None:
+        """Initializes the Chunker.
+
+        Args:
+            max_chunk_size: Maximum number of characters allowed per chunk.
+        """
         self.parser = Parser()
         self.max_chunk_size = max_chunk_size
         self.folder_to_chunk = "data/raw/vllm-0.10.1"
         self.output = "data/processed"
 
-    def parse_python_files(self, file):
+    def parse_python_files(self, file: Path) -> tuple[ast.Module, list[str]]:
+        """Parses a Python source file into an AST and its source lines.
+
+        Args:
+            file: Path to the Python file to parse.
+
+        Returns:
+            A tuple of the parsed AST module and the list of source lines
+            (each line retaining its trailing newline character).
+        """
         source = self.parser.read_from_file(file)
         tree = ast.parse(source)
         lines = source.splitlines(keepends=True)
         return tree, lines
 
-    def splitting_content(self, content):
-        chunks = []
+    def splitting_content(self, content: str) -> list[dict[str, Any]]:
+        """Splits content into chunks no larger than ``max_chunk_size``.
+
+        Prefers splitting at paragraph breaks, falling back to line breaks,
+        and applies a small overlap between consecutive chunks.
+
+        Args:
+            content: The full text content to split.
+
+        Returns:
+            A list of dicts, each with ``content``, ``start_char``, and
+            ``last_char`` keys describing a chunk and its offsets relative
+            to the original content.
+        """
+        chunks: list[dict[str, Any]] = []
         start = 0
         while start < len(content):
             end = min(start + self.max_chunk_size, len(content))
@@ -62,8 +95,13 @@ class Chunker:
 
         return chunks
 
-    def run(self):
-        all_chunks = []
+    def run(self) -> None:
+        """Runs the full chunking pipeline over ``folder_to_chunk``.
+
+        Discovers eligible files, chunks each of them, and writes the
+        combined chunks to ``output`` via :meth:`save_output`.
+        """
+        all_chunks: list[ChunkModel] = []
         chunk_id = 1
         folder = Path(self.folder_to_chunk)
 
@@ -96,9 +134,21 @@ class Chunker:
         print("Ingestion complete!", end=" ")
         print(f"Indexed {len(all_chunks)} chunks under {self.output}")
 
-    def process_python(self, file, i):
+    def process_python(
+        self, file: Path, i: int
+    ) -> tuple[list[ChunkModel], int]:
+        """Chunks a Python file by its top-level classes and functions.
+
+        Args:
+            file: Path to the Python file to process.
+            i: The starting chunk id to assign to the first produced chunk.
+
+        Returns:
+            A tuple of the list of produced :class:`ChunkModel` instances
+            and the next available chunk id.
+        """
         tree, lines = self.parse_python_files(file)
-        chunks = []
+        chunks: list[ChunkModel] = []
 
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef):
@@ -136,11 +186,24 @@ class Chunker:
 
         return chunks, i
 
-    def process_txt(self, file, chunk_id):
+    def process_txt(
+        self, file: Path, chunk_id: int
+    ) -> tuple[list[ChunkModel], int]:
+        """Chunks a text or Markdown file.
+
+        Args:
+            file: Path to the ``.txt`` or ``.md`` file to process.
+            chunk_id: The starting chunk id to assign to the first produced
+                chunk.
+
+        Returns:
+            A tuple of the list of produced :class:`ChunkModel` instances
+            and the next available chunk id.
+        """
         content = self.parser.read_from_file(file)
         parts = self.splitting_content(content)
 
-        chunks = []
+        chunks: list[ChunkModel] = []
 
         for part_number, part_content in enumerate(parts, start=1):
             chunks.append(ChunkModel(
@@ -159,7 +222,12 @@ class Chunker:
 
         return chunks, chunk_id
 
-    def save_output(self, data):
+    def save_output(self, data: list[ChunkModel]) -> None:
+        """Writes chunks to ``chunks.json`` under the output directory.
+
+        Args:
+            data: The list of :class:`ChunkModel` instances to serialize.
+        """
         path = Path(self.output)
         path.mkdir(parents=True, exist_ok=True)
 

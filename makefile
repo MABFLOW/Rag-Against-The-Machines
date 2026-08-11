@@ -1,6 +1,7 @@
 
 
 install:
+	pip install uv
 	uv sync
 
 run:
@@ -17,7 +18,7 @@ clean:
 	@find . -type f -name "*.pyc" -delete
 
 lint:
-	@flake8 .
-	@mypy . --warn-return-any \
+	@flake8 src
+	@mypy src --warn-return-any \
 	--warn-unused-ignores --ignore-missing-imports --disallow-untyped-defs \
-	--check-untyped-defs	
+	--check-untyped-defs
