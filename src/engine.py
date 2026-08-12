@@ -34,6 +34,8 @@ class Engine:
             max_chunk_size: Maximum number of characters allowed per chunk.
         """
         self.parser.validate_number(max_chunk_size, "max_chunk_size")
+        if max_chunk_size > 2000:
+            max_chunk_size = 2000
         chunker = Chunker(max_chunk_size=max_chunk_size)
         chunker.run()
         self.parser.validate_file(self.file, "chunking file")
@@ -59,7 +61,7 @@ class Engine:
 
     def search_dataset(
         self, dataset_path: str, k: int, save_directory: str
-    ) -> None:
+    ) -> str:
         """Runs search over every question in a dataset and saves results.
 
         Args:
@@ -84,7 +86,9 @@ class Engine:
         search_results = self.indexer.search(queries, k, ids)
 
         self.parser.dump_to_dir(
-            save_dir / "StudentSearchResult s.json", search_results)
+            save_dir / "StudentSearchResults.json", search_results)
+        return (f"Saved student_search_results to \
+                {save_directory}/StudentSearchResults.json")
 
     def answer(self, query: str, k: int) -> str:
         """Searches the index and generates an answer to a query.

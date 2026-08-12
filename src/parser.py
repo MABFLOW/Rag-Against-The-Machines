@@ -135,7 +135,5 @@ class Parser:
             path: Destination file path.
             data: A pydantic model instance with a ``model_dump`` method.
         """
-        # path = Path(path)
-        # path.mkdir(parents=True, exist_ok=True)
         with open(path, 'w') as f:
             json.dump(data.model_dump(), f, indent=2)
