@@ -3,6 +3,7 @@ from .models import StudentSearchResults, MinimalSearchResults, MinimalSource
 from pathlib import Path
 from .parser import Parser
 from typing import Any
+import hashlib
 
 
 class Indexer:
@@ -18,7 +19,7 @@ class Indexer:
         self.file = file
         self.chunks: Any = ""
         self.content: list[str] = []
-        self.path = "data/processed/bm25_index"
+        self.path = Path("data/processed/bm25_index")
 
     def _load_info(self) -> None:
         """Loads chunks from ``self.file`` and builds display text for each.
@@ -40,9 +41,16 @@ class Indexer:
 
     def index(self) -> None:
         """Builds a BM25 index over the loaded chunks and saves it to disk."""
+
+        if self.path.exists():
+            self.retriever = bm25s.BM25.load(self.path)
+
+            return
         self._load_info()
+
         corpus_tokens = bm25s.tokenize(self.content, show_progress=True)        
         self.retriever = bm25s.BM25()
+        
         self.retriever.index(corpus_tokens)
         self.retriever.save(self.path, corpus=self.chunks)
 
@@ -91,3 +99,16 @@ class Indexer:
             ))
 
         return StudentSearchResults(search_results=outputs, k=k)
+
+    def _hash(self, path):
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            while chunk := f.read(8192):
+                h.update(chunk)
+
+        return h.hexdigest()
+
+    def _save_hashed_file(self, file, h):
+        with open(file, 'w') as f:
+            f.write(h)
+            

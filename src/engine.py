@@ -51,6 +51,7 @@ class Engine:
             query: The search query text.
             k: Number of top results to retrieve.
         """
+        results = []
         self.parser.validate_number(k, "k")
         self.indexer.load()
         search_results = self.indexer.search(query, k)
@@ -59,7 +60,8 @@ class Engine:
             first_char = source.first_character_index
             last_char = source.last_character_index
 
-            print(f"{path} [{first_char}:{last_char}]")
+            results.append(f"{path} [{first_char}:{last_char}]")
+        return results
 
     def search_dataset(
         self, dataset_path: str, k: int, save_directory: str
@@ -130,7 +132,7 @@ class Engine:
             answer=answer_text
         )
 
-        return minimal_answer.answer
+        return {"answer": minimal_answer.answer, "sources": minimal_answer.retrieved_sources}
 
     def answer_dataset(
         self, student_search_results_path: str, save_directory: str

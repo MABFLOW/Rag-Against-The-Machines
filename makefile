@@ -1,11 +1,14 @@
 
 
 install:
-	@-pip install uv
+	@pip install uv
 	@uv sync
 
 run:
 	@uv run python3 -m src
+
+run-server:
+	@uv run fastapi dev src/server.py
 
 debug:
 	@uv run python -m pdb src
