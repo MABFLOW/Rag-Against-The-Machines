@@ -73,12 +73,12 @@ class MinimalSearchResults(BaseModel):
 
     Attributes:
         question_id: Identifier of the query this result belongs to.
-        question_str: The query text.
+        question: The query text.
         retrieved_sources: Sources retrieved for the query.
     """
 
     question_id: str
-    question_str: str
+    question: str
     retrieved_sources: List[MinimalSource]
 
 

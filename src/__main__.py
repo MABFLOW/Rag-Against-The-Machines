@@ -2,16 +2,11 @@
 
 import sys
 
-try:
-    from .engine import Engine
-    import fire
-except KeyboardInterrupt:
-    print("\nInterrupted during startup.")
-    sys.exit(1)
-
 
 if __name__ == "__main__":
     try:
+        from .engine import Engine
+        import fire
         fire.Fire(Engine)
     except KeyboardInterrupt:
         print("\nProgram has been Stoped, 'Please re-run the previous cmd'")

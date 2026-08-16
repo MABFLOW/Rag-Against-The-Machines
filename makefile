@@ -1,7 +1,7 @@
 
 
 install:
-	@pip install uv
+	@-pip install uv
 	@uv sync
 
 run:

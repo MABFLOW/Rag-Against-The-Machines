@@ -8,6 +8,7 @@ from .models import (
     MinimalSource,
     StudentSearchResultsAndAnswer,
 )
+from pathlib import Path
 from tqdm import tqdm
 from .validation import Validation
 
@@ -36,6 +37,7 @@ class Engine:
         self.parser.validate_number(max_chunk_size, "max_chunk_size")
         if max_chunk_size > 2000:
             max_chunk_size = 2000
+            print("Max_chunk_size has been reseted to 2000.")
         chunker = Chunker(max_chunk_size=max_chunk_size)
         chunker.run()
         self.parser.validate_file(self.file, "chunking file")
@@ -85,10 +87,11 @@ class Engine:
 
         search_results = self.indexer.search(queries, k, ids)
 
+        output_filename = f"StudentSearchResults_{Path(dataset_path).stem}.json"
         self.parser.dump_to_dir(
-            save_dir / "StudentSearchResults.json", search_results)
+            save_dir / output_filename, search_results)
         return (f"Saved student_search_results to \
-                {save_directory}/StudentSearchResults.json")
+                {save_directory}/{output_filename}")
 
     def answer(self, query: str, k: int) -> str:
         """Searches the index and generates an answer to a query.
@@ -122,7 +125,7 @@ class Engine:
         answer_text = self.generator.generate(query, contexts)
         minimal_answer = MinimalAnswer(
             question_id=q_id,
-            question_str=query,
+            question=query,
             retrieved_sources=sources,
             answer=answer_text
         )
@@ -162,10 +165,10 @@ class Engine:
 
                 contexts.append(content[first:last])
 
-            answer = self.generator.generate(item.question_str, contexts)
+            answer = self.generator.generate(item.question, contexts)
             answers.append(MinimalAnswer(
                 question_id=item.question_id,
-                question_str=item.question_str,
+                question=item.question,
                 retrieved_sources=item.retrieved_sources,
                 answer=answer
             ))

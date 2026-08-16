@@ -41,7 +41,7 @@ class Indexer:
     def index(self) -> None:
         """Builds a BM25 index over the loaded chunks and saves it to disk."""
         self._load_info()
-        corpus_tokens = bm25s.tokenize(self.content, show_progress=True)
+        corpus_tokens = bm25s.tokenize(self.content, show_progress=True)        
         self.retriever = bm25s.BM25()
         self.retriever.index(corpus_tokens)
         self.retriever.save(self.path, corpus=self.chunks)
@@ -86,7 +86,7 @@ class Indexer:
 
             outputs.append(MinimalSearchResults(
                 question_id=id,
-                question_str=q,
+                question=q,
                 retrieved_sources=source
             ))
 

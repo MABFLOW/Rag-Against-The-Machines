@@ -5,7 +5,7 @@
 ## Description
 
 **RAG against the machine** is a Retrieval-Augmented Generation (RAG) system built to
-answer questions about a real-world codebase — [vLLM](https://github.com/vllm-project/vllm)
+answer questions about a real-world codebase — vLLM
 (version 0.10.1) — using only the content of that codebase as its source of truth.
 
 The goal of the project is to build, end to end, the core pieces of a RAG pipeline:

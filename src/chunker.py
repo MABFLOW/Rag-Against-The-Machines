@@ -5,6 +5,7 @@ from pathlib import Path
 from tqdm import tqdm
 from .models import ChunkModel
 from typing import Any
+from .exceptions import FileAccessError
 
 
 class Chunker:
@@ -150,7 +151,7 @@ class Chunker:
         tree, lines = self.parse_python_files(file)
         chunks: list[ChunkModel] = []
 
-        for node in ast.walk(tree):
+        for node in tree.body:
             if isinstance(node, ast.ClassDef):
                 chunk_type = "class"
             elif isinstance(node, ast.FunctionDef):
@@ -158,7 +159,7 @@ class Chunker:
             elif isinstance(node, ast.AsyncFunctionDef):
                 chunk_type = "async_function"
             else:
-                continue
+                chunk_type = "code"
 
             start = node.lineno - 1
             end = node.end_lineno
@@ -174,7 +175,7 @@ class Chunker:
                     id=i,
                     file_path=str(file),
                     type=chunk_type,
-                    name=node.name,
+                    name=getattr(node, "name", file.stem),
                     part_id=part_num,
                     total_parts=len(parts),
                     content=part_content['content'],
@@ -231,5 +232,8 @@ class Chunker:
         path = Path(self.output)
         path.mkdir(parents=True, exist_ok=True)
 
-        with open(path / "chunks.json", 'w') as f:
-            json.dump([chunk.model_dump() for chunk in data], f, indent=2)
+        try:
+            with open(path / "chunks.json", 'w') as f:
+                json.dump([chunk.model_dump() for chunk in data], f, indent=2)
+        except FileNotFoundError:
+            raise FileAccessError(f"{path}/chunks.json File doesn't exist...")

@@ -135,5 +135,13 @@ class Parser:
             path: Destination file path.
             data: A pydantic model instance with a ``model_dump`` method.
         """
-        with open(path, 'w') as f:
-            json.dump(data.model_dump(), f, indent=2)
+        try:
+            with open(path, 'w') as f:
+                json.dump(data.model_dump(), f, indent=2)
+        except PermissionError:
+            raise FileAccessError(f"{path} Permission Denied.")
+        except Exception:
+            raise FileAccessError(f"{path} Something went wrong while Accessing...")
+
+    
+        
